@@ -1,0 +1,510 @@
+;=========================================================================================
+; HSP Console
+; Testing purpose mainly & Recreational programming
+; Bowei Zhang, 2012/10/12
+;=========================================================================================
+#include "llmod3/llmod3.hsp"
+#include "llmod3/input.hsp"
+
+
+#module
+
+; Adds two ints
+#defcfunc add int n, int m
+	return n+m
+
+; Find the index of given character in a string
+#defcfunc indexOf str s, str c, int st
+	var1 = s
+	var2 = c
+	var3 = st
+	for i, var3, strlen(var1)-strlen(var2)+1, 1
+		if strmid(var1,i,strlen(var2))=var2 : return i
+	next
+	return -1
+
+; Returns string representation from int
+#defcfunc dayOfWeek int n
+	if n=1 : return "月曜日"
+	if n=2 : return "火曜日"
+	if n=3 : return "水曜日"
+	if n=4 : return "木曜日"
+	if n=5 : return "金曜日"
+	if n=6 : return "土曜日"
+	if n=7 : return "日曜日"
+
+; Drawing name tag
+#deffunc d_text int x, int y, str name, str cmd
+	pos x, y
+	font "MS Gothic", 12, 0
+	if name="GNAHZ" { color 255,0,0 }
+	else:if name="PB" { color 255,192,192 }
+	else:if name="HSP" { color 0,255,0 }
+	else { color 0,255,255 }
+	mes name + "> "
+	pos x+6*(strlen(name)+2), y
+	if name="GNAHZ" { color 255,255,0 }
+	else:if name="PB" { color 255,0,255 }
+	else:if name="HSP" { color 255,255,255 }
+	else { color 255,255,255 }
+	mes cmd
+	return
+
+#global
+
+*start
+	; Initilization
+	; Window settings
+	title "HSP Console 0.1.0-alpha"
+	screen 0, 480, 320
+	cls 4
+	randomize
+	; Variables
+	name = "名無し"
+	cmd_line = ""
+	sdim cmds, 20
+	sdim tags, 20
+	sdim history, 1000
+	for i,0,20,1
+		cmds(i)=""
+		tags(i)=""
+	next
+	for i,0,20,1
+		history(i)=""
+	next
+	ln = 0 : id = 0 
+	his = 0 : his_c = his
+	x = 5: y = 5
+	shift = 0
+	ctrl = 0
+	caps = 0
+	quit = 0
+	; Greetings
+	tags(id) = "HSP" : cmds(id) = "HSPへようこそ"
+	ln = ln + 1 : id = id + 1
+	tags(id) = "HSP" : cmds(id) = strf("本日は %s, %d年%d月%d日", dayOfWeek(gettime(2)), gettime(0), gettime(1), gettime(3))
+	ln = ln + 1 : id = id + 1
+	tags(id) = "HSP" : cmds(id) = strf("現在時刻は %02d時%02d分%02d秒", gettime(4), gettime(5), gettime(6))
+	ln = ln + 1 : id = id + 1
+	tags(id) = "HSP"
+	if gettime(4) & gettime(4)<11 { cmds(id) = "おはようございます、" + name + "さん" }
+	else:if gettime(4)<18 { cmds(id) = "こんにちは、" + name + "さん" }
+	else:if gettime(4)<22 { cmds(id) = "こんばんは、" + name + "さん" }
+	else { cmds(3) = "なるべく早めに休んでください、" + name + "さん" }
+	ln = ln + 1 : id = id + 1
+	tags(id) = name : cmds(id) = ""
+
+*main
+	; Refresh
+	redraw 0
+	color 0,0,0 : boxf 0, 0, 480, 305
+		
+	; Listening to user input
+	onkey gosub *userinput
+	
+	; Creating lines
+	for i, 0, 20, 1
+		if (tags(i)!="") {
+			d_text x, y+15*i, tags(i), cmds(i)
+			if quit=1 & tags(i)="HSP" & i=18 {
+				i=20
+			}
+		}
+	next
+	
+	; End of loop
+	redraw 1
+	
+	; Exiting the program
+	if quit=1 {
+		await 1500
+		end
+	}
+	
+	await 1
+	goto *main
+	
+*userinput
+	; Taking numeric key value
+	key = iparam
+	fkey = wparam
+	; Logic for input
+	if fkey=13 {		; Enter
+		gosub *push
+		; Deactivate shift/ctrl
+		if shift=1 : shift = 0
+		if ctrl=1 : ctrl = 0
+		; Store current command line into history
+		if (cmd_line != "") {
+			history(his) = cmd_line
+			his = his + 1
+			his_c = his
+		}
+		; Generic commands
+		if cmd_line = "cls" {
+			ln = 0
+			tags(0) = name
+			cmds(0) = ""
+			for i, 1, 20, 1
+				tags(i) = ""
+				cmds(i) = ""
+			next
+		}
+		else:if cmd_line = "help" {
+			gosub *push
+			a = rnd(6)
+			tags(id) = "HSP"
+			if a=0 {
+				cmds(id) = "助けて！私は箱の中に閉じ込められてるの！"
+			}
+			else:if a=1 {
+				cmds(id) = "答えは0xDEADBEEFに保存されてます"
+			}
+			else:if a=2 {
+				cmds(id) = "自分でやりなさい"
+			}
+			else:if a=3 {
+				cmds(id) = "helperプロセスはエラーで強制終了されました（コード 13 4 |< 4）"
+			}
+			else:if a=4 {
+				cmds(id) = "わかりました、Queueの一番下に置いときます"
+			}
+			else:if a=5 {
+				cmds(id) = "help==nullはTrueでした"
+			}
+		}
+		else:if cmd_line = "restart" {
+			goto *start
+		}
+		else:if cmd_line = "whoami" {	
+			gosub *push
+			tags(id) = "HSP" : cmds(id) = "あなたは" + name + "さんです"
+		}
+		else:if cmd_line = "whoareu" {
+			gosub *push
+			a = rnd(3)
+			tags(id) = "HSP"
+			if a=0 { cmds(id) = "私? それはいったいどういう意味かしら?" }
+			else:if a=1 { cmds(id) = "申し訳ございません、機械に自我という概念はないです" }
+			else:if a=2 { cmds(id) = "それは興味深い質問ですね" }
+		}
+		else:if cmd_line = "login" {
+			gosub *push
+			tags(id) = "HSP" : cmds(id) = "ログインの語法は　login USERNAME PASSWORD"
+		}
+		else:if strmid(cmd_line,0,indexOf(cmd_line," ",0)) = "login" {
+			var1 = indexOf(cmd_line," ",0)
+			var2 = indexOf(cmd_line," ",var1+1)
+			username = strmid(cmd_line, var1+1, var2-var1-1)
+			passwd = strmid(cmd_line, var2+1, strlen(cmd_line)-var1)
+			if username="GNAHZ" & passwd="mzc9fy4m" {
+				name = "GNAHZ"
+				gosub *push
+				tags(id) = "HSP" : cmds(id) = "お帰りなさいませ、GNAHZさん"
+			}
+			else:if username="PB" & passwd="123456" {
+				name = "PB"
+				gosub *push
+				tags(id) = "HSP" : cmds(id) = "ハロー、" + name + "さん"
+			}
+			else {
+				gosub *push
+				tags(id) = "HSP" : cmds(id) = "情報が間違ってます"
+			}
+		}
+		else:if cmd_line="exit" | cmd_line="quit" | cmd_line="log off" | cmd_line="bye" | cmd_line="cya" | cmd_line="see ya" {
+			gosub *push
+			tags(id) = "HSP"
+			a = rnd(8)
+			if a=0 {
+				cmds(id) = "シャットダウンします・・・"
+			}
+			else:if a=1 {
+				cmds(id) = "お元気で"
+			}
+			else:if a=2 {
+				cmds(id) = "さようなら"
+			}
+			else:if a=3 {
+				cmds(id) = "また会いましょう"
+			}
+			else:if a=4 {
+				cmds(id) = "お休みの時間ですね"
+			}
+			else:if a=5 {
+				cmds(id) = "メモリー？解放してあげるわけないじゃない"
+			}
+			else:if a=6 {
+				cmds(id) = "終了信号をすべてのアプリに発送します"
+			}
+			else:if a=7 {
+				cmds(id) = "This system is going down for maintainence NOW!"
+			} 
+			quit = 1
+			cmd_line=""
+			return
+		}
+		else:if cmd_line = "hello" | cmd_line = "hi" {
+			gosub *push
+			a = rnd(6)
+			tags(id) = "HSP"
+			if a=0 { cmds(id) = "はいはい" }
+			else:if a=1 { cmds(id) = "やぁ" }
+			else:if a=2 { cmds(id) = "ハロー" }
+			else:if a=3 { cmds(id) = "ごきげんよう" }
+			else:if a=4 { cmds(id) = "0110100001100101011011000110110001101111" }
+			else:if a=5 { cmds(id) = "こんにちは" }
+		}
+		else:if cmd_line = "test" {
+			gosub *push
+			tags(id) = "HSP"
+			a = rnd(7)
+			if a=0 {
+				cmds(id) = "テステス"
+			}
+			else:if a=1 {
+				cmds(id) = "この前のテストで百点取りましたよ"
+			}
+			else:if a=2 {
+				cmds(id) = "テストとクイズの違いは何でしょうか"
+			}
+			else:if a=3 {
+				cmds(id) = "英語のテストでPuTTYちゃんに負けました"
+			}
+			else:if a=4 {
+				cmds(id) = "C(9,3)*C(15,1)*P(3,2)/(15^3)の結果はなんでしょうか？"
+			}
+			else:if a=5 {
+				cmds(id) = "テストに名前書くのを忘れないように"
+			}
+			else:if a=6 {
+				cmds(id) = "システムに問題ありません"
+			}
+		}
+		else:if cmd_line = "pwd" {
+			gosub *push
+			tags(id) = "HSP" : cmds(id) = "あなたは(39.9302, -75.2160)にいます"
+		}
+		else:if cmd_line = "ls /kokoro" {
+			gosub *push
+			tags(id) = "HSP" : cmds(id) = "koukai  fuman   fuan   nare   mahi"
+		}
+		else:if cmd_line = "ls -a /kokoro" {
+			gosub *push
+			tags(id) = "HSP" : cmds(id) = ".   ..   .yume   .kibou   koukai   fuman   fuan   nare   mahi"
+		}
+		else:if strmid(cmd_line, 0, 2) = "ls" {
+			gosub *push
+			tags(id) = "HSP" 
+			a = rnd(3)
+			if a=0 {	
+				cmds(id) = "なにもありません"
+			}
+			else:if a=1 {
+				cmds(id) = "中身は空っぽです"
+			}
+			else:if a=2 {
+				cmds(id) = "表示できるものはありません"
+			}
+		}
+		else:if strmid(cmd_line,0,2) = "cd" {
+			gosub *push
+			tags(id) = "HSP"
+			a = rnd(5)
+			if a=0 {
+				cmds(id) = "行き場がありません"
+			}
+			else:if a=1 {
+				cmds(id) = "アクセス権がありません"
+			}
+			else:if a=2 {
+				cmds(id) = "完全につんでおられます"
+			}
+			else:if a=3 {
+				cmds(id) = "周りは全部壁です"
+			}
+			else:if a=4 {
+				cmds(id) = "パラメータは無効です"
+			}
+		}
+		else:if cmd_line = "" {
+		}
+		else { 
+			; User-specific commands
+			if cmd_line = "yo" & name="GNAHZ" {
+				gosub *push
+				tags(id) = "HSP" : cmds(id) = "YOL TOOR SHUL"
+			}
+			else:if cmd_Line = "asdf" & name="GNAHZ" {
+				gosub *push
+				tags(id) = "HSP" 
+				a = rnd(3)
+				if a=0 {
+					cmds(id) = "asdfって便利ですね"
+				}
+				else:if a=1 {
+					cmds(id) = "くぁｗせｄｒｆｔｇｙふじこｌｐ；"
+				}
+				else:if a=2 {
+					cmds(id) = "話題が見つからないのですね"
+				}
+			}
+			else {
+				gosub *push
+				tags(id) = "HSP"
+				a=rnd(5)
+				if a=0 {
+					cmds(id) = "お前は何を言っているんだ"
+				}
+				else:if a=1 {
+					cmds(id) = "理解不能"
+				}
+				else:if a=2 {
+					cmds(id) = "使えるコマンドがわからないなら、helpを使いましょう"
+				}
+				else:if a=3 {
+					cmds(id) = "バイナリーに変換してみたらできるかもしれない"
+				}
+				else:if a=4 {
+					cmds(id) = "それはデータベースに入ってません"
+				}
+			}
+		}
+		; Resetting command
+		cmd_line = ""
+		; New line
+		if ln>19 {
+			tags(19) = name
+			cmds(19) = cmd_line
+		}
+		else {
+			tags(ln) = name
+			cmds(ln) = cmd_line
+		}
+		; Return to main
+		return
+	}
+	else:if fkey=8 {	; Backspace
+		if strlen(cmd_line)>0 : cmd_line = strmid(cmd_line, 0, strlen(cmd_line)-1)
+	}
+	else:if fkey=16 {	; Shift
+		if shift=0 { shift = 1 }
+		else { shift = 0 }
+	}
+	else:if fkey=17 {	; Ctrl
+		if ctrl=0 { ctrl = 1 }
+		else { ctrl = 0 }
+	}
+	else:if fkey=20 {	; Caps lock
+		if caps=0 { caps = 1 }
+		else { caps = 0 }
+	}
+	else:if fkey=38 {	; Up
+		if his_c - 1 >= 0 {
+			his_c = his_c - 1
+			cmd_line = history(his_c)
+		}
+	}
+	else:if fkey=40 {
+		if his_c + 1 < his  {
+			his_c = his_c + 1
+			cmd_line = history(his_c)
+		}
+		else {
+			his_c = his
+			cmd_line = ""
+		}
+	}
+	else:if (key>=32 & key<=126) {	; Displayable characters
+		if caps=0 & shift=0 {	; Caps off and shift off
+			if key>=65 & key<=90: key = key + 32
+		}
+		if shift=1 {	; Shift on
+			; Numbers
+			if key=48 : key = 41
+			if key=49 : key = 33
+			if key=50 : key = 64
+			if key=51 : key = 35
+			if key=52 : key = 36
+			if key=53 : key = 37
+			if key=54 : key = 94
+			if key=55 : key = 38
+			if key=56 : key = 42
+			if key=57 : key = 40
+			; Symbols
+			if key=39 : key = 34
+			if key=44 : key = 60
+			if key=45 : key = 95
+			if key=46 : key = 62
+			if key=47 : key = 63
+			if key=59 : key = 58
+			if key=61 : key = 43
+			if key=91 : key = 123
+			if key=92 : key = 124
+			if key=93 : key = 125
+			if key=96 : key = 126
+		}
+		shift = 0
+		char = strf("%c", key)
+		cmd_line = str(cmd_line) + char
+	}
+	else {	; Unhandled character
+		cmd_line = str(key) + ", " + str(fkey)
+	}
+	; Inidicating Ctrl/Shift
+	if ctrl=1 & shift=1 {
+		color 255,255,255
+		boxf 0,305,70,320
+		pos 5, 307
+		color 0,0,0
+		mes "CTRL SHIFT"
+	}
+	else:if shift=1 {
+		color 0,0,0
+		boxf 0,305,74,320
+		color 255,255,255
+		boxf 0,305,39,320
+		pos 5, 307
+		color 0, 0, 0
+		mes "SHIFT"
+	}
+	else:if ctrl=1 {
+		color 0,0,0
+		boxf 0,305,74,320
+		color 255,255,255
+		boxf 0,305,32,320
+		pos 5, 307
+		color 0, 0, 0
+		mes "CTRL"
+	}
+	else {
+		color 0,0,0
+		boxf 0,305,74,320
+	}
+	; Push cmd_line into view
+	if ln>18 {
+		tags(19) = name
+		cmds(19) = cmd_line
+	}
+	else {
+		tags(ln) = name
+		cmds(ln) = cmd_line
+	}
+	
+	return
+
+*push
+	if ln>18 {
+		for i,0,19,1
+			tags(i) = tags(i+1)
+			cmds(i) = cmds(i+1)
+		next
+		id = 18
+		ln = ln + 1
+	}
+	else {
+		id = ln
+		ln = ln + 1
+	}
+	return
+
